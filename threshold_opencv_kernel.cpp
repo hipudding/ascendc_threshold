@@ -112,7 +112,7 @@ extern "C" __global__ __aicore__ void threshold_opencv(GM_ADDR x, GM_ADDR y,
                                                        GM_ADDR workspace,
                                                        GM_ADDR tiling) {
   GET_TILING_DATA(ThresholdOpencvTilingData, tilingData, tiling);
-  KernelThreshold<float> op(x, y, tilingData->maxVal, tilingData->thres,
+  KernelThreshold<float> op(x, y, tilingData->maxVal, tilingData->thresh,
                             tilingData->totalLength, tilingData->threshType);
   op.Process();
 }
