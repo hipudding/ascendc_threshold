@@ -3,100 +3,66 @@
 
 using namespace AscendC;
 
-constexpr int32_t BUFFER_NUM = 2;
-constexpr int32_t UB_BUF_LEN = 248 * 1024;
-
-__aicore__ inline void GetBlockLength(uint32_t blockNum, uint32_t blockIdx,
-                           uint32_t totalLength, uint32_t& blockLength,
-                           uint32_t& offset) {
-  blockLength = totalLength / blockNum;
-  uint32_t tail = totalLength % blockNum;
-
-  if (blockIdx < tail) {
-    blockLength++;
-  }
-
-  offset = blockLength * blockIdx;
-
-  if (blockIdx >= tail) {
-    offset += tail;
-  }
-}
-
-__aicore__ inline void GetDataLengthPerLoop(uint32_t singleVarSetSize,
-                                 uint32_t sizeofT,
-                                 uint32_t buffer_num, uint32_t blockLength,
-                                 uint32_t& dataLengthPerLoop,
-                                 uint32_t& loopCount, uint32_t& tailLength) {
-  dataLengthPerLoop = DownAlign32(UB_BUF_LEN / sizeofT / singleVarSetSize / buffer_num);
-  loopCount = blockLength / dataLengthPerLoop;
-  tailLength = blockLength - (dataLengthPerLoop * loopCount);
-}
-
+template <typename T>
 class KernelThreshold {
  public:
-  __aicore__ inline KernelThreshold() {}
-  __aicore__ inline void Init(GM_ADDR x, GM_ADDR y,
-                              int32_t maxVal, int32_t thres, uint32_t totalLength) {
-    this->maxVal = maxVal;
-    this->thres = thres;
-    uint64_t blockNum = GetBlockNum();
-    uint64_t blockIdx = GetBlockIdx();
-    ASSERT(blockNum != 0 && "block dim can not be zero");
-    uint32_t offset;
-    GetBlockLength(blockNum, blockIdx, totalLength, this->blockLength, offset);
+  __aicore__ inline KernelThreshold(GM_ADDR x, GM_ADDR y, int32_t maxVal,
+                                         int32_t thres, uint32_t totalLength)
+      : _maxVal(maxVal),
+        _thres(thres),
+        _totalLength(totalLength),
+        vecTiling(totalLength, GetBlockNum(), GetBlockIdx(), sizeof(T),
+                  BUFFER_NUM * 2 + 1) {
+    xGM.SetGlobalBuffer((__gm__ T*)x + vecTiling._blockOffset,
+                        vecTiling._blockLength);
+    yGM.SetGlobalBuffer((__gm__ T*)y + vecTiling._blockOffset,
+                        vecTiling._blockLength);
 
-    xGM.SetGlobalBuffer((__gm__ float*)x + offset, this->blockLength);
-    yGM.SetGlobalBuffer((__gm__ float*)y + offset, this->blockLength);
-
-    GetDataLengthPerLoop(3, sizeof(float), BUFFER_NUM, this->blockLength,
-                         this->dataLengthPerLoop, this->loopCount,
-                         this->tailLength);
-    pipe.InitBuffer(inQueueX, BUFFER_NUM, Align32(this->dataLengthPerLoop * sizeof(float)));
-    pipe.InitBuffer(outQueueY, BUFFER_NUM, Align32(this->dataLengthPerLoop * sizeof(float)));
-    pipe.InitBuffer(tmpQueue, 1, Align32(this->dataLengthPerLoop * sizeof(uint8_t)));
+    pipe.InitBuffer(inQueueX, BUFFER_NUM, vecTiling._loopLength * sizeof(T));
+    pipe.InitBuffer(outQueueY, BUFFER_NUM, vecTiling._loopLength * sizeof(T));
+    pipe.InitBuffer(tmpQueue, 1, vecTiling._loopLength * sizeof(T));
   }
 
   __aicore__ inline void Process() {
-    for (uint32_t loop = 0; loop < this->loopCount; loop++) {
-        uint32_t offset = loop * this->dataLengthPerLoop;
-        CopyIn(offset, this->dataLengthPerLoop);
-        Compute(this->dataLengthPerLoop);
-        CopyOut(offset, this->dataLengthPerLoop);
+    for (uint32_t loop = 0; loop < vecTiling._loopCount; loop++) {
+      uint32_t offset = loop * vecTiling._loopLength;
+      CopyIn(offset, vecTiling._loopLength);
+      Compute(vecTiling._loopLength);
+      CopyOut(offset, vecTiling._loopLength);
     }
 
-    if(this->tailLength != 0) {
-        uint32_t offset = this->loopCount * this->dataLengthPerLoop;
-        CopyIn(offset, this->tailLength);
-        Compute(this->tailLength);
-        CopyOut(offset, this->tailLength);
+    if (vecTiling._tailLength != 0) {
+      uint32_t offset = vecTiling._loopCount * vecTiling._loopLength;
+      CopyIn(offset, vecTiling._tailLength);
+      Compute(vecTiling._tailLength);
+      CopyOut(offset, vecTiling._tailLength);
     }
   }
 
  private:
   __aicore__ inline void CopyIn(uint32_t offset, uint32_t len) {
-    LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
-    DataCopy(xLocal, xGM[offset],len);
-    inQueueX.EnQue<float>(xLocal);
+    LocalTensor<T> xLocal = inQueueX.AllocTensor<T>();
+    DataCopy(xLocal, xGM[offset], len);
+    inQueueX.EnQue<T>(xLocal);
   }
 
   __aicore__ inline void CopyOut(uint32_t offset, uint32_t len) {
-    LocalTensor<float> yLocal = outQueueY.DeQue<float>();
+    LocalTensor<T> yLocal = outQueueY.DeQue<T>();
     DataCopy(yGM[offset], yLocal, len);
     outQueueY.FreeTensor(yLocal);
   }
 
   __aicore__ inline void Compute(uint32_t len) {
-    LocalTensor<float> xLocal = inQueueX.DeQue<float>();
-    LocalTensor<float> yLocal = outQueueY.AllocTensor<float>();
+    LocalTensor<T> xLocal = inQueueX.DeQue<T>();
+    LocalTensor<T> yLocal = outQueueY.AllocTensor<T>();
     LocalTensor<uint8_t> mask = tmpQueue.AllocTensor<uint8_t>();
 
-    Duplicate(yLocal, (float)this->thres, len);
+    Duplicate(yLocal, static_cast<T>(_thres), len);
     Compare(mask, xLocal, yLocal, CMPMODE::LE, len);
 
-    Select(yLocal, mask, xLocal, (float)this->maxVal, SELMODE::VSEL_TENSOR_SCALAR_MODE, len);
-    
-    //Add(yLocal, xLocal, xLocal, len);
+    Select(yLocal, mask, xLocal, static_cast<T>(_maxVal),
+           SELMODE::VSEL_TENSOR_SCALAR_MODE, len);
+
     outQueueY.EnQue(yLocal);
     inQueueX.FreeTensor(xLocal);
     tmpQueue.FreeTensor(mask);
@@ -106,22 +72,19 @@ class KernelThreshold {
   TQue<QuePosition::VECIN, BUFFER_NUM> inQueueX;
   TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueY;
   TQue<QuePosition::VECIN, 1> tmpQueue;
-  GlobalTensor<float> xGM, yGM;
-  int32_t maxVal;
-  int32_t thres;
-  uint32_t totalLength;
-  uint32_t blockLength;
-  uint32_t dataLengthPerLoop;
-  uint32_t tailLength;
-  uint32_t loopCount;
+  GlobalTensor<T> xGM, yGM;
+  int32_t _maxVal;
+  int32_t _thres;
+  uint32_t _totalLength;
+  VectorTiling vecTiling;
 };
 
 extern "C" __global__ __aicore__ void threshold_opencv(GM_ADDR x, GM_ADDR y,
                                                        GM_ADDR workspace,
                                                        GM_ADDR tiling) {
-  GET_TILING_DATA(tilingData, tiling);
-  KernelThreshold op;
-  op.Init(x, y, tilingData.maxVal, tilingData.thres, tilingData.totalLength);
+  GET_TILING_DATA(ThresholdOpencvTilingData, tilingData, tiling);
+  KernelThreshold<float> op(x, y, tilingData->maxVal, tilingData->thres,
+                            tilingData->totalLength);
   op.Process();
 }
 
