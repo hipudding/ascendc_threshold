@@ -2,11 +2,11 @@
 file(GLOB KERNEL_FILES
     ${CMAKE_SOURCE_DIR}/*.cpp
 )
-list(REMOVE_ITEM KERNEL_FILES "${CMAKE_SOURCE_DIR}/threshold_opencv_host.cpp")
+list(REMOVE_ITEM KERNEL_FILES "${CMAKE_SOURCE_DIR}/main.cpp")
 set_source_files_properties(${KERNEL_FILES} PROPERTIES LANGUAGE CCE)
 
 file(GLOB MAIN_FILES
-    ${CMAKE_SOURCE_DIR}/threshold_opencv_host.cpp
+    ${CMAKE_SOURCE_DIR}/main.cpp
 )
 set_source_files_properties(${MAIN_FILES} PROPERTIES LANGUAGE CCE)
 
@@ -45,7 +45,7 @@ set_target_properties(${smoke_testcase}_npu PROPERTIES
 file(GLOB KERNEL_FILES
     ${CMAKE_SOURCE_DIR}/*.cpp
 )
-list(REMOVE_ITEM KERNEL_FILES "${CMAKE_SOURCE_DIR}/threshold_opencv_host.cpp")
+list(REMOVE_ITEM KERNEL_FILES "${CMAKE_SOURCE_DIR}/main.cpp")
 
 add_library(ascendc_kernels SHARED
     ${KERNEL_FILES}
