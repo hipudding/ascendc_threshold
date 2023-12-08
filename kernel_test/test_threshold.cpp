@@ -3,8 +3,8 @@
 
 #include <iostream>
 
-#include "threshold_opencv_kernel.h"
-#include "utils.h"
+#include "threshold/threshold_opencv_kernel.h"
+#include "test_utils.h"
 
 constexpr int threshold = 200;
 constexpr int maxVal = 255;
