@@ -10,7 +10,7 @@ cmake ..
 make
 ```
 
-## Run threshol binary
+## Run threshold binary
 All operators will compiled to two target, one is running on cpu simulator, another one is running on Ascend cores.
 ```shell
 ./kernel_test/test_threshold_cpu
