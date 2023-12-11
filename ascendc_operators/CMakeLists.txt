@@ -6,4 +6,3 @@ file(GLOB KERNEL_FILES
 
 add_subdirectory(cmake/cpu)
 add_subdirectory(cmake/npu)
-

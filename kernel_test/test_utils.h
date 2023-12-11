@@ -17,33 +17,32 @@
     }                                                                   \
   } while (0);
 
-inline uint8_t* upload(void* src, size_t size){
-    uint8_t* dst;
+inline uint8_t* upload(void* src, size_t size) {
+  uint8_t* dst;
 #ifdef __CCE_KT_TEST__
-    dst = (uint8_t*)AscendC::GmAlloc(size);
-    memcpy(dst, src, size);
+  dst = (uint8_t*)AscendC::GmAlloc(size);
+  memcpy(dst, src, size);
 #else
-    CHECK_ACL(aclrtMalloc((void**)&dst, size, ACL_MEM_MALLOC_HUGE_FIRST));
-    CHECK_ACL(aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_HOST_TO_DEVICE));
+  CHECK_ACL(aclrtMalloc((void**)&dst, size, ACL_MEM_MALLOC_HUGE_FIRST));
+  CHECK_ACL(aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_HOST_TO_DEVICE));
 #endif
-    return dst;
+  return dst;
 }
 
-inline void download(void* dst, void* src, size_t size){
+inline void download(void* dst, void* src, size_t size) {
 #ifdef __CCE_KT_TEST__
-    memcpy(dst, src, size);
+  memcpy(dst, src, size);
 #else
-    CHECK_ACL(aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_DEVICE_TO_HOST));
-#endif
-}
-
-inline void ascendcFree(uint8_t* ptr)
-{
-#ifdef __CCE_KT_TEST__
-    AscendC::GmFree(ptr);
-#else
-    CHECK_ACL(aclrtFree(ptr));
+  CHECK_ACL(aclrtMemcpy(dst, size, src, size, ACL_MEMCPY_DEVICE_TO_HOST));
 #endif
 }
 
-#endif //KERNEL_INTERFACE_H
+inline void ascendcFree(uint8_t* ptr) {
+#ifdef __CCE_KT_TEST__
+  AscendC::GmFree(ptr);
+#else
+  CHECK_ACL(aclrtFree(ptr));
+#endif
+}
+
+#endif  // KERNEL_INTERFACE_H

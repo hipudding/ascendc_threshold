@@ -4,25 +4,13 @@ endif()
 
 find_package(tikicpulib REQUIRED)
 
-add_library(ascendc_kernels_debug SHARED
-    ${KERNEL_FILES}
-)
-
-target_include_directories(ascendc_kernels_debug PRIVATE
-    ${ASCEND_INSTALL_PATH}/acllib/include
-)
+add_library(ascendc_kernels_debug SHARED ${KERNEL_FILES})
 
 target_link_libraries(ascendc_kernels_debug PRIVATE
     tikicpulib::${ASCEND_PRODUCT_TYPE}
-    ascendcl
 )
 
 target_compile_options(ascendc_kernels_debug PRIVATE
     -O0
     -g
 )
-
-# set_target_properties(ascendc_kernels_debug PROPERTIES
-#     OUTPUT_NAME ascendc_kernels_debug
-#     LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-# )

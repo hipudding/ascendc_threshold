@@ -48,7 +48,7 @@ struct VectorTiling {
     if (_blockIdx < fullBlockNum) {
       _blockLength = fullBlockLength;
       _blockOffset = _blockIdx * _blockLength;
-    // Last block must less than full block num.
+      // Last block must less than full block num.
     } else if (blockTailLength != 0 && _blockIdx == fullBlockNum) {
       _blockLength = blockTailLength;
       _blockOffset = _blockIdx * fullBlockLength;
