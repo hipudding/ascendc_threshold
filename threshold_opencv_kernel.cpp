@@ -1,6 +1,6 @@
 #include "kernel_operator.h"
-#include "tiling_kernel.h"
 #include "threshold_opencv_tiling.h"
+#include "tiling_kernel.h"
 
 using namespace AscendC;
 
@@ -11,12 +11,14 @@ class KernelThreshold {
   __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, GM_ADDR tilingGM) {
     auto tempTilingGM = (__gm__ uint32_t*)tilingGM;
     auto tempTiling = (uint32_t*)&tilingData;
-    for (int32_t i = 0; i < sizeof(ThresholdOpencvTilingData) / sizeof(int32_t); ++i, ++tempTilingGM, ++tempTiling) {
-        *tempTiling = *tempTilingGM;
+    for (int32_t i = 0;
+         i < sizeof(ThresholdOpencvTilingData) / sizeof(uint32_t);
+         ++i, ++tempTilingGM, ++tempTiling) {
+      *tempTiling = *tempTilingGM;
     }
 
-    vecTiling.calculate(tilingData.totalLength, GetBlockNum(), GetBlockIdx(), sizeof(T),
-                  BUFFER_NUM * 2 + 1);
+    vecTiling.calculate(tilingData.totalLength, GetBlockNum(), GetBlockIdx(),
+                        sizeof(T), BUFFER_NUM * 2 + 1);
 
     xGM.SetGlobalBuffer((__gm__ T*)x + vecTiling._blockOffset,
                         vecTiling._blockLength);
@@ -113,4 +115,5 @@ extern "C" __global__ __aicore__ void threshold_opencv(GM_ADDR x, GM_ADDR y,
   KernelThreshold<float> op;
   op.Init(x, y, tiling);
   op.Run();
+  dcci(tiling, 1);
 }

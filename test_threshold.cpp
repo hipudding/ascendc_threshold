@@ -2,13 +2,14 @@
 #include <sys/time.h>
 #include <acl/acl.h>
 #include <iostream>
+#include <unistd.h>
 
 #include "threshold_opencv_tiling.h"
 #include "aclrtlaunch_threshold_opencv.h"
 
 constexpr int threshold = 200;
 constexpr int maxVal = 255;
-constexpr int blockDim = 1;
+constexpr int blockDim = 8;
 
 #define TIMING(func)                                                         \
   struct timeval start, end;                                                 \
@@ -46,7 +47,6 @@ void run_kernel(float* input, float* output, uint32_t size,
   tiling.maxVal = maxVal;
   tiling.thresh = threshold;
   tiling.totalLength = size;
-
   uint8_t* inputDevice = upload(input, size * sizeof(float));
   uint8_t* outputDevice = upload(output, size * sizeof(float));
   uint8_t* tilingDevice = upload(&tiling, sizeof(ThresholdOpencvTilingData));
@@ -161,8 +161,8 @@ int32_t main(int32_t argc, char* argv[]) {
   CHECK_ACL(aclrtCreateContext(&context, deviceId));
 
   size_t tilingSize = sizeof(ThresholdOpencvTilingData);
-  uint32_t height = 720;
-  uint32_t width = 360;
+  uint32_t height = 4320;
+  uint32_t width = 7680;
   uint32_t size = height * width;
   float* input = (float*)malloc(size * sizeof(float));
   float* output = (float*)malloc(size * sizeof(float));

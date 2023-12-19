@@ -11,8 +11,10 @@ inline __aicore__ int32_t Align32Ceil(int32_t n) { return ((n + 31) & ~31); }
 
 inline __aicore__ int32_t Align32Floor(int32_t n) { return (n & ~31); }
 
+inline __aicore__ int32_t AlignDiv32(int32_t n) { return Align32Ceil(n) / 32; }
+
 constexpr int32_t BUFFER_NUM = 2;
-constexpr int32_t UB_BUF_LEN = 128 * 1024;
+constexpr int32_t UB_BUF_LEN = 248 * 1024;
 
 struct VectorTiling {
   __aicore__ inline void calculate(uint64_t totalLength, uint64_t blockNum,

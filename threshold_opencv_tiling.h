@@ -9,11 +9,12 @@ enum ThresholdTypes {
   THRESH_TOZERO_INV
 };
 
+#pragma pack(push, 8)
 struct ThresholdOpencvTilingData {
   int32_t maxVal;
   int32_t thresh;
   uint32_t totalLength;
   ThresholdTypes threshType;
 };
-
+#pragma pack(pop)
 #endif  // THRESHOLD_OPENCV_TILING_H
