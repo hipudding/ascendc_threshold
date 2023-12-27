@@ -13,21 +13,21 @@ enum ThresholdTypes {
   THRESH_TOZERO_INV
 };
 
+#pragma pack(push, 8)
 struct ThresholdOpencvTilingData {
   int32_t maxVal;
   int32_t thresh;
   uint32_t totalLength;
   ThresholdTypes threshType;
 };
+#pragma pack(pop)
 
 #ifdef __CCE_KT_TEST__
-extern "C" __global__ __aicore__ void threshold_opencv(GM_ADDR x, GM_ADDR y,
-                                                       GM_ADDR workspace,
-                                                       GM_ADDR tiling);
+extern "C" __global__ __aicore__ void threshold_opencv(GM_ADDR tiling, GM_ADDR x, GM_ADDR y);
+
 
 #else
 void threshold_opencv_kernel(uint32_t blockDim, void* l2ctrl, void* stream,
-                             uint8_t* x, uint8_t* y, uint8_t* workspace,
-                             uint8_t* tiling);
+                             uint8_t* tiling, uint8_t* x, uint8_t* y);
 #endif
 #endif  // THRESHOLD_OPENCV_TILING_H

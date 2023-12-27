@@ -45,4 +45,6 @@ inline void ascendcFree(uint8_t* ptr) {
 #endif
 }
 
+inline int32_t Align32Ceil(int32_t n) { return ((n + 31) & ~31); }
+
 #endif  // KERNEL_INTERFACE_H

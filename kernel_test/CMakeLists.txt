@@ -16,8 +16,9 @@ function(BUILD_TARGET OP_NAME ARCH LIBS)
         ${CMAKE_CURRENT_SOURCE_DIR}/test_${OP_NAME}.cpp
     )
     target_compile_options(test_${OP_NAME}_${ARCH} PRIVATE
-        -O2
+        -O0
         -std=c++17
+        -g
     )
     target_link_libraries(test_${OP_NAME}_${ARCH} PRIVATE ${LIBS})
     target_compile_definitions(test_${OP_NAME}_${ARCH} PRIVATE _GLIBCXX_USE_CXX11_ABI=0)
