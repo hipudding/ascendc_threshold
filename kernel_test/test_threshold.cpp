@@ -173,27 +173,27 @@ int32_t main(int32_t argc, char* argv[]) {
   uint32_t width = 1080;
   uint32_t size = height * width;
 
-  uint8_t* input = (uint8_t*)malloc(size * sizeof(uint8_t));
-  uint8_t* output = (uint8_t*)malloc(size * sizeof(uint8_t));
+  int32_t* input = (int32_t*)malloc(size * sizeof(int32_t));
+  int32_t* output = (int32_t*)malloc(size * sizeof(int32_t));
 
   for (int i = 0; i < size; i++) {
-    input[i] = (uint8_t)(i%255);
+    input[i] = (int32_t)(i%255);
   }
 
-  // run_thresh_binary(input, output, size);
-  // check_result_thresh_binary(input, output, size);
+  run_thresh_binary(input, output, size);
+  check_result_thresh_binary(input, output, size);
 
-  // run_thresh_binary_inv(input, output, size);
-  // check_result_thresh_binary_inv(input, output, size);
+  run_thresh_binary_inv(input, output, size);
+  check_result_thresh_binary_inv(input, output, size);
 
   run_thresh_trunc(input, output, size);
   check_result_thresh_trunc(input, output, size);
 
-  // run_thresh_tozero(input, output, size);
-  // check_result_thresh_tozero(input, output, size);
+  run_thresh_tozero(input, output, size);
+  check_result_thresh_tozero(input, output, size);
 
-  // run_thresh_tozero_inv(input, output, size);
-  // check_result_thresh_tozero_inv(input, output, size);
+  run_thresh_tozero_inv(input, output, size);
+  check_result_thresh_tozero_inv(input, output, size);
 
   free(input);
   free(output);
