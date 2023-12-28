@@ -7,7 +7,7 @@
 #include "threshold/threshold_opencv_kernel.h"
 
 constexpr int threshold = 100;
-constexpr int maxVal = 150;
+constexpr int maxVal = 125;
 constexpr int blockDim = 1;
 
 #define TIMING(func)                                                         \
@@ -29,6 +29,7 @@ void run_kernel(T* input, T* output, uint32_t size,
   tiling.maxVal = maxVal;
   tiling.thresh = threshold;
   tiling.totalLength = size;
+  tiling.dtype = 1;
 
   uint8_t* inputDevice = upload(input, size * sizeof(T));
   uint8_t* outputDevice = upload(output, size * sizeof(T));
@@ -57,7 +58,7 @@ template<typename T>
 void run_thresh_trunc(T* input, T* output, uint32_t size) {
   std::cout << "run thresh trunc" << std::endl;
   ThresholdOpencvTilingData tiling;
-  tiling.threshType = THRESH_TRUNC;
+  tiling.threshType = 2;
   run_kernel(input, output, size, tiling);
 }
 
@@ -66,11 +67,9 @@ void check_result_thresh_trunc(T* input, T* output, uint32_t size) {
   for (uint32_t i = 0; i < size; i++) {
     if (input[i] > threshold) {
       if(output[i] != threshold)
-        std::cout<<i<<","<<(int)output[i]<<","<<(int)input[i]<<std::endl;
       assert(output[i] == threshold);
     } else {
       if(output[i] != input[i])
-        std::cout<<i<<","<<(int)output[i]<<","<<(int)input[i]<<std::endl;
       assert(output[i] == input[i]);
     }
   }
@@ -81,7 +80,7 @@ template<typename T>
 void run_thresh_binary(T* input, T* output, uint32_t size) {
   std::cout << "run thresh bianry" << std::endl;
   ThresholdOpencvTilingData tiling;
-  tiling.threshType = THRESH_BINARY;
+  tiling.threshType = 0;
   run_kernel(input, output, size, tiling);
 }
 
@@ -101,7 +100,7 @@ template<typename T>
 void run_thresh_binary_inv(T* input, T* output, uint32_t size) {
   std::cout << "run thresh bianry inv" << std::endl;
   ThresholdOpencvTilingData tiling;
-  tiling.threshType = THRESH_BINARY_INV;
+  tiling.threshType = 1;
   run_kernel(input, output, size, tiling);
 }
 
@@ -122,7 +121,7 @@ template<typename T>
 void run_thresh_tozero(T* input, T* output, uint32_t size) {
   std::cout << "run thresh tozero" << std::endl;
   ThresholdOpencvTilingData tiling;
-  tiling.threshType = THRESH_TOZERO;
+  tiling.threshType = 3;
   run_kernel(input, output, size, tiling);
 }
 
@@ -142,7 +141,7 @@ template<typename T>
 void run_thresh_tozero_inv(T* input, T* output, uint32_t size) {
   std::cout << "run thresh tozero inv" << std::endl;
   ThresholdOpencvTilingData tiling;
-  tiling.threshType = THRESH_TOZERO_INV;
+  tiling.threshType = 4;
   run_kernel(input, output, size, tiling);
 }
 
@@ -169,15 +168,15 @@ int32_t main(int32_t argc, char* argv[]) {
   CHECK_ACL(aclrtCreateContext(&context, deviceId));
 #endif
 
-  uint32_t height = 720;
-  uint32_t width = 1080;
+  uint32_t height = 4320;
+  uint32_t width = 7680;
   uint32_t size = height * width;
 
-  float* input = (float*)malloc(size * sizeof(float));
-  float* output = (float*)malloc(size * sizeof(float));
+  int8_t* input = (int8_t*)malloc(size * sizeof(int8_t));
+  int8_t* output = (int8_t*)malloc(size * sizeof(int8_t));
 
   for (int i = 0; i < size; i++) {
-    input[i] = (float)(i%255);
+    input[i] = (int8_t)(i%255);
   }
 
   run_thresh_binary(input, output, size);

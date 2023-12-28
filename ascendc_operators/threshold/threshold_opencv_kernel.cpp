@@ -5,6 +5,16 @@
 
 using namespace AscendC;
 
+// Make compiler happy. These two function will never be called.
+__aicore__ static inline void Cast(const LocalTensor<half>& dstLocal,
+                                   const LocalTensor<half>& srcLocal,
+                                   const RoundMode& round_mode,
+                                   const uint32_t calCount){};
+__aicore__ static inline void Cast(const LocalTensor<float>& dstLocal,
+                                   const LocalTensor<float>& srcLocal,
+                                   const RoundMode& round_mode,
+                                   const uint32_t calCount){};
+
 /**
  * T: input data type.
  * C: data type for calculate.
@@ -14,8 +24,8 @@ template <typename T, typename C>
 class KernelThreshold {
  public:
   __aicore__ inline KernelThreshold() {}
-  __aicore__ inline void Init(ThresholdOpencvTilingData* tiling,
-                              GM_ADDR x, GM_ADDR y) {
+  __aicore__ inline void Init(ThresholdOpencvTilingData* tiling, GM_ADDR x,
+                              GM_ADDR y) {
     tilingData = tiling;
 
     /**
@@ -94,7 +104,7 @@ class KernelThreshold {
    * 1. Get data from input queue, this data can't be calculate directly.
    * 2. Get buffer with type C, which satisfied AscendC APIs.
    * 3. Cast data from T to C.
-   * 
+   *
    * If not need cast:
    * 1. Only need get data from queue.
    */
@@ -102,9 +112,9 @@ class KernelThreshold {
       TQue<QuePosition::VECIN, BUFFER_NUM>& queue,
       TBuf<TPosition::VECCALC>& buffer, uint32_t len) {
     LocalTensor<C> xLocal;
-    if (std::is_same<T, C>::value)
+    if (std::is_same<T, C>::value) {
       xLocal = queue.DeQue<C>();
-    else {
+    } else {
       xLocal = buffer.Get<C>();
       LocalTensor<T> xCast = queue.DeQue<T>();
       Cast(xLocal, xCast, RoundMode::CAST_NONE, len);
@@ -116,7 +126,7 @@ class KernelThreshold {
   /**
    * If need cast:
    * 1. Get local tensor from cast buffer.
-   * 
+   *
    * If not need cast:
    * 1. Alloc local tensor from output queue.
    */
@@ -132,7 +142,7 @@ class KernelThreshold {
   /**
    * If need cast:
    * 1. Input local tensor are get from cast buffer, which do not need free.
-   * 
+   *
    * If not need cast:
    * 1. Input local tensor are alloced from input queue, which need free.
    */
@@ -146,10 +156,10 @@ class KernelThreshold {
    * 1. Alloc local tensor from output queue.
    * 2. Cast from C to T.
    * 3. Put casted local tensor in queue.
-   * 
+   *
    * If not need cast:
    * 1. Only put local tensor in queue.
-   * 
+   *
    */
   __aicore__ inline void CastOutput(
       TQue<QuePosition::VECOUT, BUFFER_NUM>& queue, LocalTensor<C>& yLocal,
@@ -158,7 +168,14 @@ class KernelThreshold {
       queue.EnQue(yLocal);
     } else {
       LocalTensor<T> yCast = queue.AllocTensor<T>();
-      Cast(yCast, yLocal, RoundMode::CAST_ROUND, len);
+      RoundMode roundMode = RoundMode::CAST_NONE;
+      // Ref to AscendC cast API.
+      if (std::is_same<T, int16_t>::value) {
+        roundMode = RoundMode::CAST_RINT;
+      } else if (std::is_same<T, int32_t>::value) {
+        roundMode = RoundMode::CAST_ROUND;
+      }
+      Cast(yCast, yLocal, roundMode, len);
       queue.EnQue(yCast);
     }
   }
@@ -204,7 +221,7 @@ class KernelThreshold {
     }
   }
 
-    /**
+  /**
    * AscendC API Select Warpper.
    * AscendC Select level2 API need input length align to 256, process
    * tail data by level0 API.
@@ -275,19 +292,42 @@ class KernelThreshold {
   ThresholdOpencvTilingData* tilingData;
 };
 
+template <typename T, typename C>
+__aicore__ inline void launch_kernel(ThresholdOpencvTilingData& tilingData,
+                                     GM_ADDR x, GM_ADDR y) {
+  KernelThreshold<T, C> op;
+  op.Init(&tilingData, x, y);
+  op.Run();
+}
+
+using KernelFunction = void (*)(ThresholdOpencvTilingData&, GM_ADDR, GM_ADDR);
+
 extern "C" __global__ __aicore__ void threshold_opencv(GM_ADDR tilingGM,
                                                        GM_ADDR x, GM_ADDR y) {
   ThresholdOpencvTilingData tilingData;
-  auto tempTilingGM = (__gm__ uint32_t*)tilingGM;
-  auto tempTiling = (uint32_t*)&tilingData;
-  for (int32_t i = 0; i < sizeof(ThresholdOpencvTilingData) / sizeof(uint32_t);
+  auto tempTilingGM = (__gm__ uint8_t*)tilingGM;
+  auto tempTiling = (uint8_t*)&tilingData;
+  for (int32_t i = 0; i < sizeof(ThresholdOpencvTilingData) / sizeof(uint8_t);
        ++i, ++tempTilingGM, ++tempTiling) {
     *tempTiling = *tempTilingGM;
   }
 
-  KernelThreshold<float, float> op;
-  op.Init(&tilingData, x, y);
-  op.Run();
+    KernelFunction kernelFunctions[] = {
+        launch_kernel<uint8_t, half>,  // CV_8U
+        launch_kernel<int8_t, half>,   // CV_8S
+        nullptr,                       // CV_16U
+        launch_kernel<int16_t, half>,  // CV_16S
+        launch_kernel<int32_t, float>, // CV_32S
+        launch_kernel<float, float>,   // CV_32F
+        nullptr,                       // CV_64F
+        launch_kernel<half, half>      // CV_16F
+    };
+
+  KernelFunction func = kernelFunctions[tilingData.dtype];
+  if (func != nullptr) {
+    func(tilingData, x, y);
+  }
+
   dcci(tilingGM, 1);
 }
 
