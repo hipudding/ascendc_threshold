@@ -173,11 +173,11 @@ int32_t main(int32_t argc, char* argv[]) {
   uint32_t width = 1080;
   uint32_t size = height * width;
 
-  int32_t* input = (int32_t*)malloc(size * sizeof(int32_t));
-  int32_t* output = (int32_t*)malloc(size * sizeof(int32_t));
+  float* input = (float*)malloc(size * sizeof(float));
+  float* output = (float*)malloc(size * sizeof(float));
 
   for (int i = 0; i < size; i++) {
-    input[i] = (int32_t)(i%255);
+    input[i] = (float)(i%255);
   }
 
   run_thresh_binary(input, output, size);
